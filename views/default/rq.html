@@ -1,0 +1,382 @@
+{{response.files.append(URL(r=request,c='static',f='js/sugar-1.2.1.min.js'))}}
+{{extend 'layout.html'}}
+
+{{block header}}
+   <hr class="divider">
+{{end}}
+
+<a href="#" data-role="start-worker-btn" class="btn btn-default"><i class="glyphicon glyphicon-play-circle"></i> Start Worker </a>
+<a href="#" data-role="test-queue-btn" class="btn btn-primary" ><i class="glyphicon glyphicon-time"></i> Test random queue </a>
+<a href="#" data-role="test-fail-queue-btn" class="btn btn-primary" ><i class="glyphicon glyphicon-time"></i> Test fail queue </a>
+
+<div class="row">
+    <div class="col-md-6">
+    
+		<h1>Queues</h1>
+		<p class="fixed intro">This list below contains all the registered queues with the number of jobs currently in the queue.  Select a queue from above to view all jobs currently pending on the queue.</p>
+		<table class="table table-bordered table-hover" id="table_queues">
+		  <thead>
+			<tr>
+			  <th></th>
+			  <th>Queue</th>
+			  <th>Worker</th>
+			  <th>Jobs</th>
+			</tr>
+		  </thead>
+		  <tbody>
+			<tr data-role="loading-placeholder">
+				  <td colspan="3">Loading...</td>
+			</tr>
+		  </tbody>
+		</table>
+    </div>
+
+    <div class="col-md-6">
+		<h1>Workers</h1>
+		<p class="fixed intro">This list below contains all the registered workers.</p><br>
+		<table class="table table-bordered" id="table_workers">
+		  <thead>
+			<tr>
+			  <th>State</th>
+			  <th>Worker</th>
+			  <th>Queue</th>
+			  <th>Options</th>
+			</tr>
+		  </thead>
+		  <tbody>
+			<tr data-role="loading-placeholder">
+				  <td colspan="3">Loading...</td>
+			</tr>
+		  </tbody>
+		</table>
+    </div>
+</div>
+
+
+<h1>Jobs on <strong name="name_queue"></strong></h1>
+This list below contains all the registered jobs on queue <strong name="name_queue"></strong>, sorted by age (oldest on top).</p>
+
+<a href="#" id="empty-btn" class="btn btn-danger"><i class="glyphicon glyphicon-trash"></i> Empty all queue</a>
+<br><br>
+<table class="table table-hover table-bordered" id="table_jobs">
+    <thead>
+          <tr>
+	    <th>Name</th>
+	    <th>Age</th>
+	    <th>Actions</th>
+          </tr>
+    </thead>
+    <tbody>
+           <tr data-role="loading-placeholder">
+                    <td colspan="3">Loading...</td>
+           </tr>
+
+    </tbody>
+</table>
+
+<script>
+
+	var toRelative = function(universal_date_string) {
+	var tzo = new Date().getTimezoneOffset();
+	var d = Date.create(universal_date_string).rewind({ minutes: tzo });
+	return d.relative();
+	};
+	
+	//WE get the selected queue on the table
+	var get_queue = function() {
+		return $('tr input[name=queueRadios]:checked').val();
+	}
+		  
+	
+	var url_for = function(name, param) {
+	  var url = '';
+	  if (name == 'queues') { url = '{{=URL("default", "queues")}}'; }
+	  else if (name == 'jobs') { url = '{{=URL("default", "jobs")}}/' + get_queue();}
+	  else if (name == 'workers') { url = '{{=URL("default", "workers")}}'; }
+	  else if (name == 'empty_queue') { url = '{{=URL("default", "empty_queue")}}/' + get_queue();}
+	  return url;
+      };
+
+      //JOBS
+      (function($) {
+      
+	  var reload_table = function(done) {
+			    queue_name = get_queue();
+			    request = url_for('jobs')
+			    var $tbody = $('table#table_jobs tbody');
+			    $('tr[data-role=loading-placeholder]', $tbody).show();
+			   
+			    jQuery.getJSON(request,
+			    function(json){
+				      
+				      $tbody.empty();
+				      jQuery('strong[name="name_queue"]').empty();
+				      jQuery('strong[name="name_queue"]').append(get_queue());
+				      if (json.jobs.length > 0) {
+					    jQuery.each(json.jobs, function(i, job){ 
+					    
+					    job.created_at = toRelative(Date.create(job.created_at));
+					    if (job.ended_at !== undefined) {
+					    job.ended_at = toRelative(Date.create(job.ended_at));
+					    }
+					    
+					      table =  "<tr data-job-id="+job.id+">"
+					      table += "<td>"
+					      table += '<i class="icon-file" style="opacity: .5;"></i>'
+					      table += job.description.substr(0, 80)+'<small><div class="muted">'+job.id+'</div></small>'
+					      
+					      if ( queue_name == "failed"){
+						table += '<small><div >Failed: '+job.ended_at+'</div></small>'
+						table += '<pre><small><div >'+job.exc_info+'</div></small>/pre>'
+
+					      }
+					      
+					      table += "</td>"
+					      table += "<td>"+job.created_at+"</td>"
+					      table += '<td><a href="#" data-role="cancel-job-btn" class="btn btn-danger btn-sm"><i class="glyphicon glyphicon-trash"></i> Cancel</a>'
+					    
+					    if ( queue_name == "failed"){
+					      table += '<a href="#" data-role="requeue-job-btn" class="btn btn-warning btn-sm"><i class="glyphicon glyphicon-retweet"></i> Requeue</a>'
+					    }
+					    table += '</td>'
+					    table += "</tr>"
+					    $tbody.append(table);
+
+					    })
+				      }
+				      else {
+					  $tbody.append('<tr data-role="no_jobs"><td colspan="3">No jobs.</td></tr>');
+				      }
+				      
+				      $('[data-role=cancel-job-btn]').on('click', function(e) {
+					      e.preventDefault();
+					      e.stopPropagation();
+
+					      var $this = $(this),
+						  $row = $this.closest('tr'),
+						  job_id = $row.data('job-id'),
+						  url='{{=URL("default", "cancel_job")}}/'+job_id
+						  
+					      $.post(url, function(data) {
+						  $row.fadeOut('fast');
+					      });
+
+					      return false;
+				      });
+				      
+				      
+				      $('[data-role=requeue-job-btn]').on('click', function(e) {
+					      e.preventDefault();
+					      e.stopPropagation();
+
+					      var $this = $(this),
+						  $row = $this.closest('tr'),
+						  job_id = $row.data('job-id'),
+						  //url = url_for('cancel_job', job_id);
+						  url='{{=URL("default", "requeue_job")}}/'+job_id
+					      $.post(url, function(data) {
+						  $row.fadeOut('fast');
+					      });
+					      return false;
+				      });
+				      
+				      
+			      });
+			      if (done !== undefined) {
+				    done();
+			      }
+		  }
+		 
+		  var refresh_table = function() {
+			$('span.loading').fadeIn('fast');
+			reload_table(function() {
+			    $('span.loading').fadeOut('fast');
+			});
+		    };
+
+		  $(document).ready(function() {
+		      reload_table();
+		      $('#refresh-button').click(refresh_table);
+		      setInterval(refresh_table, 10000);
+
+		  });
+
+
+	})($);
+	
+	
+	//QUEUES
+      (function($) {
+	  var reload_table = function(done) {
+			    
+			    //We get the queue before to clean the table:
+			    queue_name = get_queue();
+			    request = url_for('queues')
+			    var $tbody = $('table#table_queues tbody');
+			    $('tr[data-role=loading-placeholder]', $tbody).show();
+			    jQuery.getJSON(request,
+			    function(json){
+				      $tbody.empty();
+				      if (json.queues.length > 0) {
+					    jQuery.each(json.queues, function(i, queue){ 
+					    
+					    if (queue.name == "failed")
+					    {
+					      table = '<tr class="warning" data-queue-id='+queue.name+'>'
+						if (queue_name == queue.name){
+						    table += '<td><input type="radio" name="queueRadios" value='+queue.name+' checked></td>'
+						}else{
+						    table += '<td><input type="radio" name="queueRadios" value='+queue.name+'></td>'
+						}
+					      table += '<td><i class="icon-inbox" style="opacity: .5;"></i> <a href=#>'+queue.name+'</a></td>'
+					    }
+					    else{
+					     table =  "<tr data-queue-id="+queue.name+">"
+						if (queue_name == queue.name){
+						    table += '<td><input type="radio" name="queueRadios" value='+queue.name+' checked></td>'
+						}else{
+						    table += '<td><input type="radio" name="queueRadios" value='+queue.name+'></td>'
+						}
+					     table += '<td><i class="icon-inbox" style="opacity: .5;"></i> <a href=#>'+queue.name+'</a></td>'
+					    }
+					    table += '<td class="narrow">'+queue.worker+'</td>'
+					    table += '<td class="narrow">'+queue.jobs+'</td>'
+					    table += "</tr>"
+					    //jQuery("#table_jobs").append(table);
+					    $tbody.append(table);
+					    
+					    })
+				      }
+				      else {
+					  $tbody.append('<tr data-role="no_queues"><td colspan="4">No queues.</td></tr>');
+				      }
+			      });
+			      if (done !== undefined) {
+				    done();
+			      }
+		  }
+
+		  $('#empty-btn').click(function(e) {
+		      e.preventDefault();
+		      e.stopPropagation();
+		      url = url_for('empty_queue')
+		      $.post(url, function(data) {
+			      
+		      });
+		      reload_table();
+		      return false;
+		  });
+		  
+		  
+		  $('[data-role=test-queue-btn]').on('click', function(e) {
+			url='{{=URL("default", "test_queue")}}'  
+			$.post(url, function(data) {
+			});
+			reload_table();
+			return false;
+		  });
+		  
+		  $('[data-role=test-fail-queue-btn]').on('click', function(e) {
+			url='{{=URL("default", "test_fail_queue")}}'  
+			$.post(url, function(data) {
+			});
+			reload_table();
+			return false;
+		  });
+		  
+		  
+		  var refresh_table = function() {
+			$('span.loading').fadeIn('fast');
+			reload_table(function() {
+			    $('span.loading').fadeOut('fast');
+			});
+		    };
+
+		  $(document).ready(function() {
+		      reload_table();
+		      $('#refresh-button').click(refresh_table);
+		      setInterval(refresh_table, 10000);
+
+		  });
+
+	})($);
+	
+       //WORKERS
+      (function($) {
+      
+	  var reload_table = function(done) {
+			    
+			    //We get the queue before to clean the table:
+			    request = url_for('workers')
+			    var $tbody = $('table#table_workers tbody');
+			    $('tr[data-role=loading-placeholder]', $tbody).show();
+			    jQuery.getJSON(request,
+			    function(json){
+				      $tbody.empty();
+				      if (json.workers.length > 0) {
+					    jQuery.each(json.workers, function(i, worker){ 
+					      if (worker.state === 'busy') {
+						  worker.state = 'play';
+					      } else {
+						  worker.state = 'pause';
+					      }
+					
+					    table = '<tr>'
+					    table += '<td><i class="glyphicon glyphicon-'+worker.state+'"></i></td>'
+					    table += '<td class="narrow">'+worker.name+'</td>'
+					    table += '<td class="narrow">'+worker.queues+'</td>'
+					    table += '<td><a href="#" id='+worker.name+' data-role="stop-worker-btn" class="btn btn-danger btn-xs"> stop </a></td>'
+					    table += "</tr>"
+					    $tbody.append(table);
+
+					    })
+				      }
+				      
+				      else { 
+					  $tbody.append('<tr data-role="no_queues"><td colspan="4">No queues.</td></tr>');
+				      }
+				      $('[data-role=stop-worker-btn]').on('click', function(e) {
+					      e.preventDefault();
+					      e.stopPropagation();
+
+					      var $this = $(this),
+					      worker_id = $this.attr('id');
+					      url='{{=URL("default", "stop_worker")}}/' + worker_id
+					      $.post(url, function(data) {});
+					      reload_table();
+					      return false;
+					});
+
+			      });
+			      
+			      if (done !== undefined) {
+				    done();
+			      }
+		  }
+		 
+		 $('[data-role=start-worker-btn]').on('click', function(e) {
+			url='{{=URL("default", "start_worker")}}'
+			$.post(url, function(data) {
+			});
+			reload_table();
+			return false;
+		  });
+		  
+		  
+		  var refresh_table = function() {
+			$('span.loading').fadeIn('fast');
+			reload_table(function() {
+			    $('span.loading').fadeOut('fast');
+			});
+		    };
+
+		  $(document).ready(function() {
+		      reload_table();
+		      $('#refresh-button').click(refresh_table);
+		      setInterval(refresh_table, 10000);
+
+		  });
+
+	})($);
+
+</script>
