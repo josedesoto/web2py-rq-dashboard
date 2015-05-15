@@ -4,13 +4,9 @@
 
 ## It looks like this:
 
-![](./static/images/rq.png)
-
 ![](./static/images/rq1.png)
 
 ![](./static/images/rq2.png)
-
-![](./static/images/rq3.png)
 
 
 ## Installing
