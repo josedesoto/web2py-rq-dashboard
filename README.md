@@ -23,25 +23,25 @@ apt-get install redis
 
 ### How to install the Dashboard in Linux, windows or Mac:
 
-0. Download the las version of web2py and unzip:
+1. Download the last web2py version and unzip:
 ```
 cd /opt
 wget http://www.web2py.com/examples/static/web2py_src.zip
 unzip web2py_src.zip
 ```
 
-0. Download the app inside web2py:
+2. Download the app from github and move into web2py framework:
 ```
 cd /opt/web2py/applications
 git clone https://github.com/josedesoto/monitor.git
 ```
 
-0. Run web2py:
+3. Run web2py and ready to use it!!!
 ```
 python /opt/web2py/web2py.py
 ```
 
-0. Open the URL: http://localhost:8000/rq
+4. Open the URL: http://localhost:8000/rq
 
 
 For more info about rq library: `http://python-rq.org`
