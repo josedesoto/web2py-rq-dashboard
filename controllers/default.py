@@ -68,4 +68,7 @@ def test_fail_queue():
     random_queue= random.randint(0, len(queues)-1)
     return rq.queue_job(time.sleep, queues[random_queue]['name'], 10, 22)
 
-
+def requeue_failed():
+    import subprocess
+    subprocess.call(['/usr/local/bin/rq', 'requeue', '-a'])
+    return 0
