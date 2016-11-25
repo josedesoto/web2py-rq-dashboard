@@ -68,4 +68,9 @@ def test_fail_queue():
     random_queue= random.randint(0, len(queues)-1)
     return rq.queue_job(time.sleep, queues[random_queue]['name'], 10, 22)
 
-
+def requeue_failed():
+    rq = RqConn()
+    failed_jobs=rq.list_jobs('failed')
+    for job in failed_jobs:
+        rq.requeue_job(job['id'])
+    return 0
