@@ -8,6 +8,7 @@
 <a href="#" data-role="start-worker-btn" class="btn btn-default"><i class="glyphicon glyphicon-play-circle"></i> Start Worker </a>
 <a href="#" data-role="test-queue-btn" class="btn btn-primary" ><i class="glyphicon glyphicon-time"></i> Test random queue </a>
 <a href="#" data-role="test-fail-queue-btn" class="btn btn-primary" ><i class="glyphicon glyphicon-time"></i> Test fail queue </a>
+<a href="#" data-role="requeue-failed-btn" class="btn btn-default"><i class="glyphicon glyphicon-play-circle"></i> Requeue failed jobs </a>
 
 <div class="row">
     <div class="col-md-6">
@@ -275,7 +276,14 @@ This list below contains all the registered jobs on queue <strong name="name_que
 			reload_table();
 			return false;
 		  });
-		  
+	      
+                  $('[data-role=requeue-failed-btn]').on('click', function(e) {
+			url='{{=URL("default", "requeue_failed")}}'
+			$.post(url, function() {
+			});
+			reload_table();
+			return false;
+		  });
 		  $('[data-role=test-fail-queue-btn]').on('click', function(e) {
 			url='{{=URL("default", "test_fail_queue")}}'  
 			$.post(url, function(data) {
